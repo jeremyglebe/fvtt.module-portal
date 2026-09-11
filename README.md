@@ -6,10 +6,10 @@ private Storage, and an Edge Function. No ChatGPT Sites hosting is involved.
 
 **Site:** https://jeremyglebe.com/fvtt.module-portal/ (GitHub Pages, using the account's existing domain)
 
-**Setup status:** the frontend can deploy independently. A Supabase project,
-email delivery, and the owner account must be configured before downloads work.
-The unconfigured site explicitly displays a setup notice. See [SETUP.md](SETUP.md)
-for the desktop checklist; no project credentials are included in this repository.
+**Setup status:** GitHub Pages is connected to the deployed Supabase backend.
+Owner-account bootstrap, custom email delivery, and a real Foundry install remain
+before inviting friends. See [DEPLOYMENT.md](DEPLOYMENT.md) for verified status and
+[SETUP.md](SETUP.md) for remaining steps. No private keys or passwords are included.
 
 ## What it does
 
@@ -51,7 +51,7 @@ In a module made from `fvtt.wfrp.template`, select `authenticated-site` and set:
 ```env
 RELEASE_CHANNEL=authenticated-site
 AUTHENTICATED_SITE_URL=https://jeremyglebe.com/fvtt.module-portal/
-AUTHENTICATED_SITE_MANIFEST_URL=https://PROJECT_REF.supabase.co/functions/v1/portal/public/YOUR_MODULE_ID/module.json
+AUTHENTICATED_SITE_MANIFEST_URL=https://hxqobdtslujsptkehmkj.supabase.co/functions/v1/portal/public/YOUR_MODULE_ID/module.json
 ```
 
 Prepare the release with the template's normal release command, then run this

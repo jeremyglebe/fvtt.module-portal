@@ -1,8 +1,22 @@
 # Desktop setup checklist
 
-You can leave this until you are back at a computer. The GitHub Pages frontend
-does not require your Supabase sign-in to deploy. **The Supabase project has not
-been created by the coding agent because account authentication was unavailable.**
+The shared project `hxqobdtslujsptkehmkj` and GitHub Pages connection are deployed.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for completed checks. For the existing deployment,
+continue with custom SMTP, owner-account setup, and a real module installation.
+Steps 1–4 below also document rebuilding on a fresh project.
+
+**Migration history note:** the initial migration was applied through the SQL
+editor. Before the first CLI `db push` against this existing project, link it and
+mark that migration as applied. Do not run the creation SQL again:
+
+```sh
+npx supabase login
+npx supabase link --project-ref hxqobdtslujsptkehmkj
+npx supabase migration repair 202609110001 --status applied
+npx supabase migration list
+```
+
+Review that local and remote histories match before pushing future migrations.
 
 ## 1. Create the Supabase project
 
@@ -103,7 +117,7 @@ Use its account controls to revoke access or grant unlimited issuance to testers
 Follow [the publication instructions](README.md#publish-a-module). Use a small
 test module first. Never place private artifacts in this repository or Pages' `dist`.
 
-Acceptance checklist (not yet run against a live project):
+Acceptance checklist (completed portions are recorded in DEPLOYMENT.md):
 
 - An unconfirmed, unapproved, signed-out, or banned user cannot generate a link.
 - An ordinary user cannot read/write portal tables, approve themselves, change

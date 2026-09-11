@@ -102,7 +102,7 @@ function render() {
     card.append(
       el(
         "span",
-        approved ? "ACCESS APPROVED" : "APPROVAL REQUIRED",
+        approved ? "Approved" : "Approval required",
         `badge ${approved ? "approved" : ""}`,
       ),
       el("h3", module.title),
@@ -119,9 +119,7 @@ function render() {
       );
       if (pending) card.append(el("p", "Your access request is awaiting review.", "muted"));
       else
-        card.append(
-          button("Request access ↗", () => request(module, latest, "access"), "secondary"),
-        );
+        card.append(button("Request access", () => request(module, latest, "access"), "secondary"));
     } else if (latest) {
       const select = el("select");
       select.setAttribute("aria-label", `Release of ${module.title}`);
@@ -153,7 +151,7 @@ function render() {
           ),
         );
         if (account.unlimited_grants || used < allowance)
-          actions.append(button("Generate installation link ↗", () => claim(release)));
+          actions.append(button("Generate installation link", () => claim(release)));
         if (pending) actions.append(el("p", "Replacement request awaiting review.", "muted"));
         else if (used)
           actions.append(
@@ -182,8 +180,7 @@ function render() {
 function renderAdmin(admin, modules) {
   $("queue").replaceChildren();
   $("policies").replaceChildren();
-  if (!admin.queue.length)
-    $("queue").append(el("p", "All caught up. No requests awaiting review.", "muted"));
+  if (!admin.queue.length) $("queue").append(el("p", "No pending requests.", "muted"));
   for (const r of admin.queue) {
     const row = el("article", undefined, "admin-row");
     const email = admin.accounts.find((a) => a.user_id === r.user_id)?.email || r.user_id;

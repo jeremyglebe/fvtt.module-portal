@@ -29,7 +29,7 @@ export default defineConfig(({ mode, command }) => {
               transformIndexHtml: {
                 order: "pre",
                 handler: (html) =>
-                  html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/, ""),
+                  html.replace(/<meta\s+http-equiv="Content-Security-Policy"[^>]*>/, ""),
               },
             },
           ]

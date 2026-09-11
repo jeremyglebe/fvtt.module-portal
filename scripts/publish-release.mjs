@@ -20,7 +20,7 @@ export function publishingSettings(env) {
         `1. Open ${dashboard}`,
         "2. Open Legacy anon, service_role API keys; reveal and copy service_role, NOT anon or the public publishable key.",
         "3. In your module project's .env.local, add SUPABASE_SERVICE_ROLE_KEY=<copied value>.",
-        "4. Rerun npm run release. The standalone portal uploader requires these variables in its shell environment instead.",
+        "4. Rerun npm run release, or node scripts/init/configure-release-publishing.mjs if initialization was interrupted. The standalone portal uploader requires these variables in its shell environment instead.",
         "This is one-time setup, NOT a single-use key. Reuse it for every release until it is rotated, revoked, or expires.",
         "Never commit the key, share it with players, or put it in the public site or a VITE_ variable.",
         "Full instructions: docs/releases/Authenticated Site.md (Getting the publishing credential), or distribution-site/README.md.",
@@ -42,9 +42,83 @@ async function request(fetcher, url, options) {
     });
   } catch {
     throw new Error(
-      "Portal request failed or timed out. Retry the same unchanged release to resume safely.",
+      "Portal request failed or timed out. Retry initialization or the same unchanged release to resume safely.",
     );
   }
+}
+
+// Create with the intended visibility in one insert: never briefly create a private listing
+// for a secret module. Duplicate IDs do not overwrite existing visibility, metadata, or grants.
+export async function registerModule({ module, visibility, env = process.env, fetcher = fetch }) {
+  const { base, key } = publishingSettings(env);
+  if (!["private", "secret"].includes(visibility))
+    throw new Error(
+      "AUTHENTICATED_SITE_VISIBILITY must be private or secret. Public modules use their GitHub manifest.",
+    );
+  if (
+    !module ||
+    typeof module.id !== "string" ||
+    !/^[a-z0-9][a-z0-9-]*$/.test(module.id) ||
+    typeof module.title !== "string" ||
+    !module.title.trim() ||
+    module.title.length > 200 ||
+    (module.description !== undefined &&
+      (typeof module.description !== "string" || module.description.length > 2000))
+  )
+    throw new Error(
+      "Module registration requires a valid ID, a title of 1–200 characters, and a description of at most 2000 characters.",
+    );
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const result = await request(fetcher, `${base}/rest/v1/portal_modules?on_conflict=id`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+      Prefer: "resolution=ignore-duplicates,return=minimal",
+    },
+    body: JSON.stringify({
+      id: module.id,
+      title: module.title,
+      description: module.description ?? "",
+      visibility,
+      manifest_url: null,
+    }),
+  });
+  if (!result.ok)
+    throw new Error(
+      `Module registration failed (${result.status}). Check backend deployment and publishing credentials; initialization is not complete.`,
+    );
+  const confirmation = await request(
+    fetcher,
+    `${base}/rest/v1/portal_modules?id=eq.${module.id}&select=id,visibility,manifest_url`,
+    { headers },
+  );
+  if (!confirmation.ok)
+    throw new Error(
+      `Module registration could not be confirmed (${confirmation.status}). Retry with the same module ID and visibility.`,
+    );
+  let rows;
+  try {
+    rows = await confirmation.json();
+  } catch {
+    throw new Error(
+      "Module registration returned an invalid response; registration is not confirmed.",
+    );
+  }
+  if (
+    !Array.isArray(rows) ||
+    rows.length !== 1 ||
+    rows[0]?.id !== module.id ||
+    !["public", "private", "secret"].includes(rows[0]?.visibility)
+  )
+    throw new Error(
+      "Module registration returned an invalid response; registration is not confirmed.",
+    );
+  if (rows[0].visibility !== visibility || rows[0].manifest_url !== null)
+    throw new Error(
+      "This module ID already has different portal visibility. No existing settings were changed. Choose another ID, or explicitly reconcile Administration > Module settings with AUTHENTICATED_SITE_VISIBILITY before retrying.",
+    );
+  return { moduleId: module.id, visibility };
 }
 
 export function validateRelease(metadata, manifest, notice, zip, base) {

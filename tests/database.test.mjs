@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
+import { registerModule } from "../scripts/publish-release.mjs";
 
 const migration = await readFile(
   new URL("../supabase/migrations/202609110001_portal.sql", import.meta.url),
@@ -14,6 +15,68 @@ const visibilityMigration = await readFile(
 const user = "11111111-1111-4111-8111-111111111111";
 const admin = "22222222-2222-4222-8222-222222222222";
 const hash = (n) => n.toString(16).padStart(64, "0");
+
+test("initialized secret is hidden before any release and accepts email grants immediately", async () => {
+  const { db } = await fixture();
+  try {
+    const module = { id: "new-secret", title: "New Secret", description: "Hidden from the start" };
+    // Exercise the existing PostgreSQL permissions and the insert/confirmation contract used by
+    // PostgREST's on_conflict=id + resolution=ignore-duplicates requests.
+    await registerModule({
+      module,
+      visibility: "secret",
+      env: { SUPABASE_URL: "https://test.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "test-key" },
+      fetcher: async (url, options) => {
+        await db.exec("set role service_role");
+        try {
+          if (options.method === "POST") {
+            const row = JSON.parse(options.body);
+            await db.query(
+              "insert into public.portal_modules(id,title,description,visibility,manifest_url) values($1,$2,$3,$4,$5) on conflict(id) do nothing",
+              [row.id, row.title, row.description, row.visibility, row.manifest_url],
+            );
+            return new Response(null, { status: 201 });
+          }
+          return Response.json(
+            (
+              await db.query(
+                "select id,visibility,manifest_url from public.portal_modules where id=$1",
+                [module.id],
+              )
+            ).rows,
+          );
+        } finally {
+          await db.exec("reset role");
+        }
+      },
+    });
+    const catalog = async (who) =>
+      (await db.query("select * from public.portal_catalog($1)", [who])).rows;
+    assert.ok(!(await catalog(user)).some((row) => row.id === module.id));
+    assert.equal((await catalog(admin)).find((row) => row.id === module.id).visibility, "secret");
+    assert.equal(
+      (
+        await db.query("select count(*)::int as n from public.portal_releases where module_id=$1", [
+          module.id,
+        ])
+      ).rows[0].n,
+      0,
+    );
+    await db.query("select public.portal_set_email_access($1,$2,'friend@example.com',true)", [
+      admin,
+      module.id,
+    ]);
+    assert.equal((await catalog(user)).find((row) => row.id === module.id).approved, true);
+    const manifest = { ...module, version: "1.0.0" };
+    await db.query("select public.portal_publish($1,$1,'new-secret/1.0.0/module.zip',$2,100)", [
+      manifest,
+      hash(123),
+    ]);
+    assert.equal((await catalog(user)).find((row) => row.id === module.id).visibility, "secret");
+  } finally {
+    await db.close();
+  }
+});
 
 test("catalog separates public, private, and secret; email access works before signup and revokes tickets", async () => {
   const { db, release } = await fixture();

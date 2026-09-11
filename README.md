@@ -67,10 +67,19 @@ verified Auth email on every claim/download; changing email or revoking access i
 links. Explicit account approval/revocation takes precedence over the email allowlist. These are
 access grants, not invitation emails; signup/sign-in still uses Supabase email delivery.
 
-Existing modules and newly auto-published modules default to **private**. Register a **secret**
-module here with its exact module ID **before its first release**. Automated releases preserve
-visibility, description, and email grants. Changing something previously listed or distributed to
-secret cannot recall information people already received.
+The template initializer offers **private** or **secret** when choosing site distribution. With
+the reusable publishing credential configured, it immediately inserts and confirms the module's
+chosen visibility in Supabase, before any release. It saves `AUTHENTICATED_SITE_VISIBILITY` in the
+module's `.env.repo`; releases verify that setting. Registration retries preserve existing metadata
+and grants, and a visibility conflict stops rather than silently changing an existing entry.
+The `registerModule` export in `scripts/publish-release.mjs` uses the existing table permissions;
+no additional backend migration or Pages deployment is required.
+
+Older publishers without explicit visibility still default new entries to **private**. For those,
+register a **secret** module here with its exact module ID **before its first release**, or rerun
+the updated template's publishing setup. Automated releases preserve visibility, description, and
+email grants. Changing something previously listed or distributed to secret cannot recall
+information people already received.
 
 Secret titles, descriptions, release history, and old requests are filtered on the backend, not
 just hidden in the page. Anonymous notification manifests return 404 for secret modules, even

@@ -11,8 +11,13 @@ test("simplified page retains every account, request, and download control", asy
     assert.ok(ids.includes(match[1]), `Missing control: ${match[1]}`);
   }
   assert.match(html, /<h1>Foundry modules<\/h1>/);
+  assert.match(html, /Game Systems → Install System/);
+  assert.match(script, /Install System for a game system/);
   assert.match(html, /aria-labelledby="ticket-title"/);
   assert.match(html, /aria-labelledby="request-title"/);
-  assert.doesNotMatch(html, /shared adventure|roll initiative|library card|access desk|private shelves/i);
+  assert.doesNotMatch(
+    html,
+    /shared adventure|roll initiative|library card|access desk|private shelves/i,
+  );
   assert.doesNotMatch(script, /↗|All caught up/);
 });

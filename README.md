@@ -172,3 +172,12 @@ private manifests, service keys, tickets, or user records to this public repo.**
   v14.365 implementation. Test your supported version/hosting environment before rollout.
 
 See [SECURITY.md](SECURITY.md) for trust boundaries and [SETUP.md](SETUP.md) for deployment.
+
+## Module and system packages
+
+The portal distributes both Foundry add-on modules and game systems. Its existing API/database names
+and `module.json`/`module.zip` transport URLs remain compatible. For systems, the ZIP must contain
+`system.json` at its root, and users install the supplied manifest URL from Game Systems → Install
+System. The template automates this during initialization and release. Optional `packageType` in
+release metadata is `module` or `system`; omitted metadata remains compatible with older module
+publishers. Catalog IDs are unique across both types. No additional Supabase migration is required.

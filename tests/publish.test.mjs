@@ -28,6 +28,14 @@ test("publisher accepts matching artifacts and rejects tampering or public conte
     manifestUrl: manifest.manifest,
   };
   assert.equal(validateRelease(metadata, manifest, manifest, zip, base), metadata.storagePath);
+  assert.equal(
+    validateRelease({ ...metadata, packageType: "system" }, manifest, manifest, zip, base),
+    metadata.storagePath,
+  );
+  assert.throws(
+    () => validateRelease({ ...metadata, packageType: "world" }, manifest, manifest, zip, base),
+    /package type/,
+  );
   assert.throws(
     () => validateRelease(metadata, manifest, manifest, Buffer.from("tampered"), base),
     /integrity/,

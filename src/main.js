@@ -130,7 +130,9 @@ function render() {
         button("Copy manifest URL", async () => {
           try {
             await navigator.clipboard.writeText(input.value);
-            notify("Manifest URL copied. Paste it into Foundry’s Install Module dialog.");
+            notify(
+              "Manifest URL copied. Use Foundry’s Install Module dialog, or Install System for a game system.",
+            );
           } catch {
             input.focus();
             input.select();

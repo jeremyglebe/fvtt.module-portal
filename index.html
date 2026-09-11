@@ -16,7 +16,7 @@
     <main>
       <header>
         <h1>Foundry modules</h1>
-        <p>Public downloads and modules for private games.</p>
+        <p>Foundry VTT modules and game systems.</p>
       </header>
       <div id="notice" role="status" aria-live="polite" hidden></div>
       <section id="setup" class="panel" hidden>
@@ -119,7 +119,8 @@
             after 30 minutes.
           </li>
           <li>
-            In Foundry, open <strong>Install Module</strong> and paste the link into
+            In Foundry, open <strong>Add-on Modules → Install Module</strong> for modules, or
+            <strong>Game Systems → Install System</strong> for systems, and paste the link into
             <strong>Manifest URL</strong>.
           </li>
         </ol>
@@ -128,10 +129,10 @@
         <summary>Updating an installed module</summary>
         <p>
           Public modules update through their original manifest URL. For private and secret modules,
-          generate a link for the new version and use Install Module again. The matching module ID
-          replaces the existing installation. Back up any edits to module files or compendiums
-          first. Private modules can expose version notices, but automatic downloads are
-          unavailable. Secret modules have no public version notices; check this site for their
+          generate a link for the new version and use Install Module (or Install System) again. The
+          matching package ID replaces the existing installation. Back up any edits to module files
+          or compendiums first. Private modules can expose version notices, but automatic downloads
+          are unavailable. Secret modules have no public version notices; check this site for their
           updates.
         </p>
       </details>
@@ -149,7 +150,8 @@
       <button class="quiet close-dialog" aria-label="Close">✕</button>
       <h2 id="ticket-title">Installation link</h2>
       <p>
-        Copy this into <strong>Install Module → Manifest URL</strong>. Don’t open it to test the
+        Copy this into <strong>Install Module → Manifest URL</strong>, or
+        <strong>Install System → Manifest URL</strong> for a game system. Don’t open it to test the
         download or share it. The link is only shown here, not saved in this browser.
       </p>
       <label for="ticket-url">Temporary manifest URL</label>

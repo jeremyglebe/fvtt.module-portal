@@ -122,6 +122,8 @@ export async function registerModule({ module, visibility, env = process.env, fe
 }
 
 export function validateRelease(metadata, manifest, notice, zip, base) {
+  if (metadata.packageType !== undefined && !["module", "system"].includes(metadata.packageType))
+    throw new Error("Invalid Foundry package type.");
   if (
     metadata.schemaVersion !== 1 ||
     !/^[a-z0-9][a-z0-9-]*$/.test(metadata.moduleId) ||

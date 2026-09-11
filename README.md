@@ -181,3 +181,6 @@ and `module.json`/`module.zip` transport URLs remain compatible. For systems, th
 System. The template automates this during initialization and release. Optional `packageType` in
 release metadata is `module` or `system`; omitted metadata remains compatible with older module
 publishers. Catalog IDs are unique across both types. No additional Supabase migration is required.
+The catalog intentionally does not infer package type from delivery filenames or store a second
+type switch. Public and private copy actions both show the exact installer paths for modules and
+systems, including before a package's first release. Select the appropriate installer for your package.

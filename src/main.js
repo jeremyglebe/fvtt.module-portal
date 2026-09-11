@@ -6,6 +6,9 @@ const $ = (id) => document.getElementById(id);
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const configured = /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url || "") && Boolean(key);
+// Delivery filenames cannot identify package type; give both exact installer paths on every copy.
+const installationHint =
+  "Modules: Add-on Modules → Install Module. Systems: Game Systems → Install System. Paste into Manifest URL.";
 let client, session, current, requestDraft;
 let refreshSequence = 0;
 
@@ -130,9 +133,7 @@ function render() {
         button("Copy manifest URL", async () => {
           try {
             await navigator.clipboard.writeText(input.value);
-            notify(
-              "Manifest URL copied. Use Foundry’s Install Module dialog, or Install System for a game system.",
-            );
+            notify(`Manifest URL copied. ${installationHint}`);
           } catch {
             input.focus();
             input.select();
@@ -385,7 +386,7 @@ $("copy-ticket").addEventListener("click", () =>
   work($("copy-ticket"), async () => {
     try {
       await navigator.clipboard.writeText($("ticket-url").value);
-      notify("Link copied. Paste it into Foundry’s Install Module dialog.");
+      notify(`Link copied. ${installationHint}`);
     } catch {
       $("ticket-url").focus();
       $("ticket-url").select();

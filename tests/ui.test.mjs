@@ -12,7 +12,14 @@ test("simplified page retains every account, request, and download control", asy
   }
   assert.match(html, /<h1>Foundry modules<\/h1>/);
   assert.match(html, /Game Systems → Install System/);
-  assert.match(script, /Install System for a game system/);
+  assert.match(script, /Systems: Game Systems → Install System/);
+  assert.match(script, /Modules: Add-on Modules → Install Module/);
+  assert.match(script, /notify\(`Manifest URL copied\. \$\{installationHint\}`\)/);
+  assert.match(
+    script.slice(script.indexOf('$("copy-ticket").addEventListener')),
+    /notify\(`Link copied\. \$\{installationHint\}`\)/,
+  );
+  assert.doesNotMatch(script, /Paste it into Foundry’s Install Module dialog/);
   assert.match(html, /aria-labelledby="ticket-title"/);
   assert.match(html, /aria-labelledby="request-title"/);
   assert.doesNotMatch(

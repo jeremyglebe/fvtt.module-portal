@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta
+      name="description"
+      content="Private home-game modules. One library, with access by invitation."
+    />
+    <title>The Module Library</title>
+    <link rel="icon" type="image/svg+xml" href="./src/mark.svg" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a href="./" class="wordmark"
+        ><span class="mark" aria-hidden="true">M</span> THE MODULE LIBRARY</a
+      ><span class="private-label">A PRIVATE COLLECTION</span>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">FOR THE TABLE. NOT THE WORLD.</p>
+          <h1>A small library.<br />A shared adventure.</h1>
+          <p class="lede">
+            A home for our Foundry VTT modules. Sign in, find your approved releases, and bring
+            something new to the next session.
+          </p>
+        </div>
+        <aside class="intro-note">
+          <span class="catalog-number">01 / ACCESS</span>
+          <p>Public door.<br />Private shelves.</p>
+          <span>Accounts are welcome.<br />Module access is by approval.</span>
+        </aside>
+      </section>
+      <div id="notice" role="status" aria-live="polite" hidden></div>
+      <section id="setup" class="panel setup" hidden>
+        <p class="eyebrow">THE LIBRARY IS BEING PREPARED</p>
+        <h2>Not open for downloads yet.</h2>
+        <p>
+          This site is published, but account services and private storage haven’t been connected.
+          Registration and downloads will be available once setup is complete.
+        </p>
+        <a href="https://github.com/jeremyglebe/fvtt.module-portal/blob/main/SETUP.md"
+          >Administrator setup checklist ↗</a
+        >
+      </section>
+      <section id="auth" class="panel" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">YOUR LIBRARY CARD</p>
+            <h2>Sign in with email.</h2>
+          </div>
+          <p>No password to remember.<br />We’ll send a secure sign-in link.</p>
+        </div>
+        <form id="signin">
+          <label for="email">Email address</label>
+          <div class="input-row">
+            <input
+              id="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+              required
+              maxlength="254"
+            /><button>Send sign-in link <span aria-hidden="true">↗</span></button>
+          </div>
+          <p class="muted">
+            First visit? Your verified email creates an account. An administrator must approve
+            access to each module before you can download it.
+          </p>
+        </form>
+      </section>
+      <section id="library" hidden>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">YOUR COLLECTION</p>
+            <h2>Module releases</h2>
+          </div>
+          <div class="account-line">
+            <span id="account-email"></span><button class="quiet" id="refresh">Refresh</button
+            ><button class="quiet" id="signout">Sign out</button>
+          </div>
+        </div>
+        <div id="modules" class="module-grid"></div>
+        <section id="request-history" class="panel" hidden>
+          <h3>Your requests</h3>
+          <div id="requests"></div>
+        </section>
+      </section>
+      <section id="admin" class="panel" hidden>
+        <p class="eyebrow">ADMINISTRATOR</p>
+        <h2>Access desk</h2>
+        <h3>Pending requests</h3>
+        <div id="queue"></div>
+        <h3>Account policies</h3>
+        <p class="muted">
+          Unlimited accounts still need approval for each module. Revoking approval also invalidates
+          outstanding links.
+        </p>
+        <div id="policies"></div>
+      </section>
+      <section class="how">
+        <div>
+          <p class="eyebrow">FROM LIBRARY TO GAME</p>
+          <h2>Three steps.<br />Then, roll initiative.</h2>
+        </div>
+        <ol>
+          <li>
+            <span>01</span>
+            <div>
+              <h3>Get approved</h3>
+              <p>Verify your email, then request access to the modules for your game.</p>
+            </div>
+          </li>
+          <li>
+            <span>02</span>
+            <div>
+              <h3>Claim a release</h3>
+              <p>
+                Generate a 30-minute installation link. Each release includes one download;
+                replacements need approval.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span>03</span>
+            <div>
+              <h3>Install in Foundry</h3>
+              <p>
+                Paste the link into Install Module. For an update, the matching module ID replaces
+                the existing installation.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+      <details class="faq">
+        <summary>What about Foundry’s automatic updater?</summary>
+        <p>
+          Your installed module checks a permanent public manifest for new versions. Automatic
+          installation is intentionally unavailable and may show an update error. Return here to
+          claim the new release, then use Install Module again. Back up changes made directly to
+          module files or compendiums first.
+        </p>
+      </details>
+      <details class="faq">
+        <summary>What if a download fails, or I need another copy?</summary>
+        <p>
+          A link is consumed when a ZIP download starts, even if the transfer fails. It cannot
+          resume or retry. Use “Request replacement” on the release and explain what happened. An
+          administrator can approve another link. An unused link can be passed to someone else, so
+          treat it like a password; this is access control, not copy protection.
+        </p>
+      </details>
+    </main>
+    <footer>
+      <span>Made for the people around our table.</span
+      ><span>Independent project · Not affiliated with Foundry VTT</span>
+    </footer>
+    <dialog id="ticket-dialog">
+      <button class="quiet close-dialog" aria-label="Close">✕</button>
+      <p class="eyebrow">YOUR INSTALLATION LINK</p>
+      <h2>Ready for Foundry.</h2>
+      <p>
+        Copy this into <strong>Install Module → Manifest URL</strong>. Don’t open it to test the
+        download or share it. The link is only shown here, not saved in this browser.
+      </p>
+      <label for="ticket-url">Temporary manifest URL</label><input id="ticket-url" readonly />
+      <p id="ticket-expiry" class="muted"></p>
+      <button id="copy-ticket">Copy link</button>
+    </dialog>
+    <dialog id="request-dialog">
+      <button class="quiet close-dialog" aria-label="Close">✕</button>
+      <p class="eyebrow">CONTACT THE ACCESS DESK</p>
+      <h2 id="request-title">Request access</h2>
+      <form id="request-form">
+        <label for="reason">Tell us what you need</label
+        ><textarea
+          id="reason"
+          required
+          minlength="10"
+          maxlength="2000"
+          rows="5"
+          placeholder="Your game, or why you need a replacement…"
+        ></textarea
+        ><button>Send request</button>
+      </form>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

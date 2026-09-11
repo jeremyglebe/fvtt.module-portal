@@ -1,0 +1,27 @@
+project_id = "fvtt-module-portal"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5173/fvtt.module-portal/"
+additional_redirect_urls = []
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+# Public manifest/ticket routes share the handler with session-authenticated routes.
+# Every protected route verifies the token with Auth's /user endpoint itself.
+[functions.portal]
+verify_jwt = false

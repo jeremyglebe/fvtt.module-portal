@@ -7,23 +7,147 @@ const migration = await readFile(
   new URL("../supabase/migrations/202609110001_portal.sql", import.meta.url),
   "utf8",
 );
+const visibilityMigration = await readFile(
+  new URL("../supabase/migrations/202609110002_module_visibility.sql", import.meta.url),
+  "utf8",
+);
 const user = "11111111-1111-4111-8111-111111111111";
 const admin = "22222222-2222-4222-8222-222222222222";
 const hash = (n) => n.toString(16).padStart(64, "0");
+
+test("catalog separates public, private, and secret; email access works before signup and revokes tickets", async () => {
+  const { db, release } = await fixture();
+  try {
+    const catalog = async (who = user) =>
+      (await db.query("select * from public.portal_catalog($1)", [who])).rows;
+    const setModule = (id, visibility, url = null) =>
+      db.query("select public.portal_set_module($1,$2,$3,'Description',$4,$5)", [
+        admin,
+        id,
+        id,
+        visibility,
+        url,
+      ]);
+    const setEmail = (email, active) =>
+      db.query("select public.portal_set_email_access($1,'test-module',$2,$3)", [
+        admin,
+        email,
+        active,
+      ]);
+    await setModule(
+      "public-module",
+      "public",
+      "https://raw.githubusercontent.com/owner/repo/main/module.json",
+    );
+    assert.deepEqual((await catalog()).map((m) => m.visibility).sort(), ["private", "public"]);
+    assert.equal(
+      (await catalog()).find((m) => m.id === "public-module").manifest_url,
+      "https://raw.githubusercontent.com/owner/repo/main/module.json",
+    );
+    await setModule("test-module", "secret");
+    assert.deepEqual(
+      (await catalog()).map((m) => m.id),
+      ["public-module"],
+    );
+    assert.equal((await catalog(admin)).length, 2);
+    await assert.rejects(
+      db.query(
+        "select public.portal_request($1,'test-module',null,'access','Please grant access')",
+        [user],
+      ),
+      /Module unavailable/,
+    );
+    await assert.rejects(
+      db.query(
+        "select public.portal_request($1,'nonexistent',null,'access','Please grant access')",
+        [user],
+      ),
+      /Module unavailable/,
+    );
+    await assert.rejects(
+      db.query("select public.portal_issue($1,$2,$3)", [user, release, hash(1)]),
+      /Release unavailable/,
+    );
+    await setEmail(" FUTURE@example.com ", true);
+    assert.equal((await catalog()).length, 1);
+    // Recipient may sign up later; only Auth's confirmed, current email is used.
+    await db.query(
+      "update auth.users set email='Future@Example.com',email_confirmed_at=null where id=$1",
+      [user],
+    );
+    assert.equal((await catalog()).length, 1);
+    await db.query("update auth.users set email_confirmed_at=now() where id=$1", [user]);
+    assert.equal((await catalog()).find((m) => m.id === "test-module").approved, true);
+    await db.query("select public.portal_issue($1,$2,$3)", [user, release, hash(1)]);
+    await db.query("select public.portal_ticket($1,false)", [hash(1)]);
+    await db.query("update auth.users set email='other@example.com' where id=$1", [user]);
+    assert.equal((await catalog()).length, 1);
+    await assert.rejects(
+      db.query("select public.portal_ticket($1,false)", [hash(1)]),
+      /Approval revoked/,
+    );
+    await db.query("update auth.users set email='future@example.com' where id=$1", [user]);
+    await setEmail("future@example.com", false);
+    assert.equal((await catalog()).length, 1);
+    await assert.rejects(
+      db.query("select public.portal_ticket($1,true)", [hash(1)]),
+      /Approval revoked/,
+    );
+    await setEmail("future@example.com", true);
+    await db.query("select public.portal_set_policy($1,$2,'test-module',false,null)", [
+      admin,
+      user,
+    ]);
+    assert.equal((await catalog()).length, 1, "Explicit account revocation overrides email access");
+    await db.query("select public.portal_set_policy($1,$2,'test-module',true,null)", [admin, user]);
+    assert.equal((await catalog()).length, 2);
+    await assert.rejects(
+      db.query(
+        "select public.portal_set_module($1,'bad','Bad','','public','https://example.com/module.json')",
+        [user],
+      ),
+      /Administrator required/,
+    );
+    await assert.rejects(
+      db.query(
+        "select public.portal_set_email_access($1,'test-module','stranger@example.com',true)",
+        [user],
+      ),
+      /Administrator required/,
+    );
+    const next = { id: "test-module", title: "Test", version: "1.0.1" };
+    await db.query("select public.portal_publish($1,$1,'test-module/1.0.1/module.zip',$2,100)", [
+      next,
+      hash(999),
+    ]);
+    assert.equal(
+      (await catalog()).find((m) => m.id === "test-module").visibility,
+      "secret",
+      "Automated publication preserves visibility",
+    );
+  } finally {
+    await db.close();
+  }
+});
 
 async function fixture() {
   const db = new PGlite();
   await db.exec(`
     create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth; create schema storage;
-    create table auth.users(id uuid primary key, email_confirmed_at timestamptz, banned_until timestamptz);
+    create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, banned_until timestamptz);
     create table storage.buckets(id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);
   `);
   await db.exec(migration);
+  await db.exec(visibilityMigration);
   await db.query("insert into auth.users(id,email_confirmed_at) values ($1,now()),($2,now())", [
     user,
     admin,
   ]);
+  await db.query(
+    "update auth.users set email=case when id=$1 then 'friend@example.com' else 'owner@example.com' end",
+    [user],
+  );
   await db.query(
     "insert into public.portal_accounts(user_id,email,is_admin) values($1,$3,false),($2,$4,true)",
     [user, admin, "friend@example.com", "owner@example.com"],
@@ -60,6 +184,21 @@ test("schema denies direct browser access and service RPC execution", async () =
     for (const role of ["anon", "authenticated"]) {
       await db.exec(`set role ${role}`);
       await assert.rejects(db.query("select * from public.portal_grants"), /permission denied/);
+      await assert.rejects(
+        db.query("select * from public.portal_email_access"),
+        /permission denied/,
+      );
+      await assert.rejects(
+        db.query("select public.portal_catalog($1)", [user]),
+        /permission denied/,
+      );
+      await assert.rejects(
+        db.query(
+          "select public.portal_set_email_access($1,'test-module','friend@example.com',true)",
+          [admin],
+        ),
+        /permission denied/,
+      );
       await assert.rejects(
         db.query("select public.portal_ticket($1,false)", [hash(1)]),
         /permission denied/,

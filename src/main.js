@@ -54,8 +54,19 @@ async function api(path, body) {
 }
 function clearPrivateView() {
   current = null;
-  for (const id of ["modules", "requests", "queue", "policies", "account-email"])
+  for (const id of [
+    "modules",
+    "requests",
+    "queue",
+    "policies",
+    "account-email",
+    "edit-module",
+    "email-access-module",
+    "email-access-list",
+  ])
     $(id).replaceChildren();
+  $("module-form").reset();
+  $("email-access-form").reset();
   $("library").hidden = true;
   $("admin").hidden = true;
   $("ticket-url").value = "";
@@ -102,25 +113,49 @@ function render() {
     card.append(
       el(
         "span",
-        approved ? "Approved" : "Approval required",
+        module.visibility === "public"
+          ? "Public"
+          : `${module.visibility === "secret" ? "Secret" : "Private"} · ${approved ? "Approved" : "Approval required"}`,
         `badge ${approved ? "approved" : ""}`,
       ),
       el("h3", module.title),
       el("p", module.id, "module-id"),
     );
+    if (module.description) card.append(el("p", module.description));
+    if (module.visibility === "public") {
+      const input = el("input");
+      input.readOnly = true;
+      input.value = module.manifest_url;
+      input.setAttribute("aria-label", `Public manifest URL for ${module.title}`);
+      card.append(
+        input,
+        button("Copy manifest URL", async () => {
+          try {
+            await navigator.clipboard.writeText(input.value);
+            notify("Manifest URL copied. Paste it into Foundry’s Install Module dialog.");
+          } catch {
+            input.focus();
+            input.select();
+            notify("Select and copy the manifest URL manually.");
+          }
+        }),
+      );
+      $("modules").append(card);
+      continue;
+    }
     const available = releases.filter((r) => r.module_id === module.id);
     const latest = available[0];
     card.append(
       el("p", latest ? `Latest release · v${latest.version}` : "No release available", "muted"),
     );
-    if (!approved) {
+    if (!approved && module.visibility !== "secret") {
       const pending = requests.some(
         (r) => r.module_id === module.id && r.kind === "access" && r.status === "pending",
       );
       if (pending) card.append(el("p", "Your access request is awaiting review.", "muted"));
       else
         card.append(button("Request access", () => request(module, latest, "access"), "secondary"));
-    } else if (latest) {
+    } else if (approved && latest) {
       const select = el("select");
       select.setAttribute("aria-label", `Release of ${module.title}`);
       for (const release of available) {
@@ -178,6 +213,39 @@ function render() {
   if (admin) renderAdmin(admin, modules);
 }
 function renderAdmin(admin, modules) {
+  const editing = $("edit-module").value;
+  $("edit-module").replaceChildren(new Option("Add a module", ""));
+  $("email-access-module").replaceChildren();
+  for (const module of modules) {
+    $("edit-module").append(new Option(`${module.title} (${module.visibility})`, module.id));
+    if (module.visibility !== "public")
+      $("email-access-module").append(new Option(module.title, module.id));
+  }
+  $("edit-module").value = modules.some((m) => m.id === editing) ? editing : "";
+  loadModuleForm();
+  $("email-access-list").replaceChildren();
+  for (const access of admin.emailAccess || []) {
+    if (modules.find((m) => m.id === access.module_id)?.visibility === "public") continue;
+    const row = el(
+      "p",
+      `${modules.find((m) => m.id === access.module_id)?.title || access.module_id} · ${access.email} · ${access.active ? "Granted" : "Revoked"} `,
+    );
+    row.append(
+      button(
+        access.active ? "Revoke" : "Grant",
+        async () => {
+          await api("admin/email-access", {
+            moduleId: access.module_id,
+            email: access.email,
+            active: !access.active,
+          });
+          await refresh();
+        },
+        "quiet",
+      ),
+    );
+    $("email-access-list").append(row);
+  }
   $("queue").replaceChildren();
   $("policies").replaceChildren();
   if (!admin.queue.length) $("queue").append(el("p", "No pending requests.", "muted"));
@@ -219,9 +287,18 @@ function renderAdmin(admin, modules) {
     );
     row.append(label);
     for (const module of modules) {
-      const active = admin.policies.some(
-        (p) => p.user_id === account.user_id && p.module_id === module.id && p.active,
+      if (module.visibility === "public") continue;
+      const policy = admin.policies.find(
+        (p) => p.user_id === account.user_id && p.module_id === module.id,
       );
+      const active = policy
+        ? policy.active
+        : (admin.emailAccess || []).some(
+            (a) =>
+              a.module_id === module.id &&
+              a.email === account.email.trim().toLowerCase() &&
+              a.active,
+          );
       row.append(
         button(
           `${active ? "Revoke" : "Approve"} ${module.title}`,
@@ -246,6 +323,59 @@ function renderAdmin(admin, modules) {
     $("policies").append(row);
   }
 }
+function updateManifestField() {
+  const isPublic = $("module-visibility").value === "public";
+  $("module-manifest").disabled = !isPublic;
+  $("module-manifest").required = isPublic;
+}
+function loadModuleForm() {
+  const module = current?.modules.find((m) => m.id === $("edit-module").value);
+  $("module-id").value = module?.id || "";
+  $("module-id").readOnly = Boolean(module);
+  $("module-title").value = module?.title || "";
+  $("module-description").value = module?.description || "";
+  $("module-visibility").value = module?.visibility || "private";
+  $("module-manifest").value = module?.manifest_url || "";
+  updateManifestField();
+}
+$("edit-module").addEventListener("change", loadModuleForm);
+$("module-visibility").addEventListener("change", updateManifestField);
+$("module-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  work(event.submitter, async () => {
+    const existing = current.modules.find((m) => m.id === $("module-id").value.trim());
+    if (
+      existing &&
+      existing.visibility !== $("module-visibility").value &&
+      !window.confirm(
+        `Change visibility of ${existing.title} to ${$("module-visibility").value}? Previously shared information cannot be recalled.`,
+      )
+    )
+      return;
+    await api("admin/module", {
+      moduleId: $("module-id").value.trim(),
+      title: $("module-title").value,
+      description: $("module-description").value,
+      visibility: $("module-visibility").value,
+      manifestUrl: $("module-manifest").value.trim(),
+    });
+    notify("Module saved.");
+    await refresh();
+  });
+});
+$("email-access-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  work(event.submitter, async () => {
+    await api("admin/email-access", {
+      moduleId: $("email-access-module").value,
+      email: $("email-access-address").value.trim(),
+      active: true,
+    });
+    $("email-access-address").value = "";
+    notify("Email access granted. The recipient must verify that address when signing in.");
+    await refresh();
+  });
+});
 for (const node of document.querySelectorAll(".close-dialog"))
   node.addEventListener("click", () => node.closest("dialog").close());
 $("ticket-dialog").addEventListener("close", () => {

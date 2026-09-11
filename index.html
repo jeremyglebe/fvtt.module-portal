@@ -8,7 +8,7 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
     />
-    <meta name="description" content="Download and update private Foundry VTT modules." />
+    <meta name="description" content="Download and update Foundry VTT modules." />
     <title>Foundry modules</title>
     <link rel="icon" type="image/svg+xml" href="./src/mark.svg" />
   </head>
@@ -16,7 +16,7 @@
     <main>
       <header>
         <h1>Foundry modules</h1>
-        <p>Downloads for private games. Access to each module requires approval.</p>
+        <p>Public downloads and modules for private games.</p>
       </header>
       <div id="notice" role="status" aria-live="polite" hidden></div>
       <section id="setup" class="panel" hidden>
@@ -64,6 +64,43 @@
       </section>
       <section id="admin" class="panel" hidden>
         <h2>Administration</h2>
+        <h3>Module settings</h3>
+        <label for="edit-module">Edit a module or add one</label>
+        <select id="edit-module"></select>
+        <form id="module-form">
+          <label for="module-id">Module ID</label>
+          <input id="module-id" required pattern="[a-z0-9][a-z0-9-]*" />
+          <label for="module-title">Title</label>
+          <input id="module-title" required maxlength="200" />
+          <label for="module-description">Description (optional)</label>
+          <textarea id="module-description" maxlength="2000" rows="3"></textarea>
+          <label for="module-visibility">Visibility</label>
+          <select id="module-visibility">
+            <option value="private">Private — listed, approval required</option>
+            <option value="public">Public — existing public manifest</option>
+            <option value="secret">Secret — only approved accounts and administrators</option>
+          </select>
+          <label for="module-manifest">Public manifest URL (public modules only)</label>
+          <input id="module-manifest" type="url" placeholder="https://…/module.json" />
+          <p class="muted">
+            Public URLs are copied as-is, not uploaded or mirrored. Add secret modules here before
+            their first release. Previously public information cannot be made secret again.
+          </p>
+          <button>Save module</button>
+        </form>
+        <h3>Email access</h3>
+        <p class="muted">
+          Grant access before someone signs up. They must sign in with that verified email. An
+          explicit account approval or revocation below takes precedence.
+        </p>
+        <form id="email-access-form">
+          <label for="email-access-module">Module</label>
+          <select id="email-access-module" required></select>
+          <label for="email-access-address">Email address</label>
+          <input id="email-access-address" type="email" required maxlength="254" />
+          <button>Grant email access</button>
+        </form>
+        <div id="email-access-list"></div>
         <h3>Pending requests</h3>
         <div id="queue"></div>
         <h3>Account policies</h3>
@@ -76,8 +113,11 @@
       <section class="instructions">
         <h2>Installation</h2>
         <ol>
-          <li>Sign in and request access to a module.</li>
-          <li>Once approved, generate an installation link. It expires after 30 minutes.</li>
+          <li>Sign in. For a public module, copy its public manifest URL.</li>
+          <li>
+            For a private module, request access first. Once approved, generate a link; it expires
+            after 30 minutes.
+          </li>
           <li>
             In Foundry, open <strong>Install Module</strong> and paste the link into
             <strong>Manifest URL</strong>.
@@ -87,18 +127,20 @@
       <details class="faq">
         <summary>Updating an installed module</summary>
         <p>
-          Generate a link for the new version and use Install Module again. The matching module ID
+          Public modules update through their original manifest URL. For private and secret modules,
+          generate a link for the new version and use Install Module again. The matching module ID
           replaces the existing installation. Back up any edits to module files or compendiums
-          first. Foundry can detect new versions, but automatic updates are unavailable and may
-          report an error.
+          first. Private modules can expose version notices, but automatic downloads are
+          unavailable. Secret modules have no public version notices; check this site for their
+          updates.
         </p>
       </details>
       <details class="faq">
         <summary>Download limits and replacements</summary>
         <p>
-          Each release includes one download. A link is used when the ZIP transfer starts, even if
-          it fails. To try again or get another copy, select Request replacement and explain why. An
-          administrator must approve it. Do not share installation links.
+          Private and secret releases include one download. A link is used when the ZIP transfer
+          starts, even if it fails. To try again or get another copy, select Request replacement and
+          explain why. An administrator must approve it. Do not share installation links.
         </p>
       </details>
     </main>

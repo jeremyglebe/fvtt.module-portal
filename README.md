@@ -46,6 +46,43 @@ the live two-client concurrency and full Foundry acceptance checks in [SETUP.md]
 
 ## Publish a module
 
+### Module visibility
+
+An administrator manages the catalog under **Administration → Module settings**:
+
+| Level   | Listed after sign-in                             | Installation                                                                        |
+| ------- | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Public  | Everyone                                         | Copy the existing public GitHub (or other HTTPS) manifest URL; no approval or grant |
+| Private | Everyone sees the title and optional description | Approval required to generate a temporary installation link                         |
+| Secret  | Only approved accounts and administrators        | Approval required; hidden accounts cannot request access by guessing its ID         |
+
+For public entries, save the module ID, title, optional description, and stable public manifest URL.
+The portal copies that URL unchanged; it does not mirror or upload the package. Releases and updates
+continue through the original public repository, so changing its latest manifest needs no portal edit.
+
+For private/secret entries, **Administration → Email access** accepts an email and module, even
+before the person signs up. After they verify that email, they can see and download the module.
+Grant/revoke controls are available for each email. Email access is checked against the current
+verified Auth email on every claim/download; changing email or revoking access invalidates existing
+links. Explicit account approval/revocation takes precedence over the email allowlist. These are
+access grants, not invitation emails; signup/sign-in still uses Supabase email delivery.
+
+Existing modules and newly auto-published modules default to **private**. Register a **secret**
+module here with its exact module ID **before its first release**. Automated releases preserve
+visibility, description, and email grants. Changing something previously listed or distributed to
+secret cannot recall information people already received.
+
+Secret titles, descriptions, release history, and old requests are filtered on the backend, not
+just hidden in the page. Anonymous notification manifests return 404 for secret modules, even
+with a guessed ID. Secret modules therefore have no anonymous Foundry update notices: approved
+users check the portal for updates. Private modules retain the public notification endpoint.
+
+Apply `supabase/migrations/202609110002_module_visibility.sql` after the initial migration and
+deploy the updated `portal` function before publishing the updated frontend. The allowlist has
+RLS enabled and no browser table/RPC privileges. Owner admin setup is still required (see SETUP.md).
+
+### Release configuration
+
 In a module made from `fvtt.wfrp.template`, select `authenticated-site` and set:
 
 ```env

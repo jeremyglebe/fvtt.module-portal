@@ -28,6 +28,7 @@ const safeErrors = [
   "Daily request limit reached",
   "Claim the initial link first",
   "Request already resolved",
+  "Module unavailable",
 ];
 export function createHandler(config: Config) {
   const fetcher = config.fetcher ?? fetch;
@@ -96,27 +97,38 @@ export function createHandler(config: Config) {
   }
   async function dashboard(user: Row) {
     const uid = encodeURIComponent(user.user_id);
-    const [modules, releases, approvals, grants, requests] = await Promise.all([
-      read("modules", "select=id,title&order=title"),
+    const [modules, releases, grants, requests] = await Promise.all([
+      rpc("portal_catalog", { p_user: user.user_id }) as Promise<Row[]>,
       read(
         "releases",
         "select=id,module_id,version,created_at&published=eq.true&order=created_at.desc",
       ),
-      read("approvals", `user_id=eq.${uid}&select=module_id,active`),
       read(
         "grants",
         `user_id=eq.${uid}&select=id,release_id,created_at,expires_at,consumed_at&order=created_at.desc`,
       ),
       read("requests", `user_id=eq.${uid}&select=*&order=created_at.desc`),
     ]);
-    const result: Row = { account: user, modules, releases, approvals, grants, requests };
+    // Filter every related collection, including old requests/grants after a secret revocation.
+    const visible = new Set(modules.map((m) => m.id));
+    const visibleReleases = releases.filter((r) => visible.has(r.module_id));
+    const releaseIds = new Set(visibleReleases.map((r) => r.id));
+    const result: Row = {
+      account: user,
+      modules,
+      releases: visibleReleases,
+      approvals: modules.map((m) => ({ module_id: m.id, active: m.approved })),
+      grants: grants.filter((g) => releaseIds.has(g.release_id)),
+      requests: requests.filter((r) => visible.has(r.module_id)),
+    };
     if (user.is_admin) {
-      const [accounts, queue, policies] = await Promise.all([
+      const [accounts, queue, policies, emailAccess] = await Promise.all([
         read("accounts", "select=*&order=email"),
         read("requests", "status=eq.pending&select=*&order=created_at"),
         read("approvals", "select=*"),
+        read("email_access", "select=module_id,email,active&order=email"),
       ]);
-      result.admin = { accounts, queue, policies };
+      result.admin = { accounts, queue, policies, emailAccess };
     }
     return result;
   }
@@ -136,6 +148,13 @@ export function createHandler(config: Config) {
       if (["GET", "HEAD"].includes(request.method)) {
         if (path.length === 3 && path[0] === "public" && path[2] === "module.json") {
           if (!/^[a-z0-9][a-z0-9-]*$/.test(path[1])) throw new HttpError(404, "Module not found.");
+          const [module] = await read(
+            "modules",
+            `id=eq.${path[1]}&visibility=eq.private&select=id`,
+          );
+          // Secret modules have no anonymous notification metadata, even at a guessed URL.
+          // Public modules use their saved external manifest directly, without proxying it.
+          if (!module) throw new HttpError(404, "Module not found.");
           const [release] = await read(
             "releases",
             `module_id=eq.${path[1]}&published=eq.true&select=public_manifest&order=created_at.desc&limit=1`,
@@ -266,7 +285,57 @@ export function createHandler(config: Config) {
       }
       if (path.length === 2 && path[0] === "admin") {
         if (!user.is_admin) throw new HttpError(403, "Administrator required.");
-        if (path[1] === "decide") {
+        if (path[1] === "module") {
+          if (
+            typeof body.moduleId !== "string" ||
+            !/^[a-z0-9][a-z0-9-]*$/.test(body.moduleId) ||
+            typeof body.title !== "string" ||
+            !body.title.trim() ||
+            body.title.length > 200 ||
+            typeof body.description !== "string" ||
+            body.description.length > 2000 ||
+            !["public", "private", "secret"].includes(body.visibility)
+          )
+            throw new HttpError(400, "Provide a module ID, title, description, and visibility.");
+          let manifestUrl = null;
+          if (body.visibility === "public") {
+            try {
+              const value = new URL(body.manifestUrl);
+              if (value.protocol !== "https:" || value.username || value.password || value.hash)
+                throw new Error();
+              manifestUrl = value.href;
+            } catch {
+              throw new HttpError(
+                400,
+                "Provide a public HTTPS manifest URL without credentials or a fragment.",
+              );
+            }
+          }
+          await rpc("portal_set_module", {
+            p_admin: user.user_id,
+            p_id: body.moduleId,
+            p_title: body.title.trim(),
+            p_description: body.description.trim(),
+            p_visibility: body.visibility,
+            p_manifest_url: manifestUrl,
+          });
+        } else if (path[1] === "email-access") {
+          if (
+            typeof body.moduleId !== "string" ||
+            !/^[a-z0-9][a-z0-9-]*$/.test(body.moduleId) ||
+            typeof body.email !== "string" ||
+            body.email.trim().length > 254 ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim()) ||
+            typeof body.active !== "boolean"
+          )
+            throw new HttpError(400, "Provide a module and a valid email address.");
+          await rpc("portal_set_email_access", {
+            p_admin: user.user_id,
+            p_module: body.moduleId,
+            p_email: body.email.trim().toLowerCase(),
+            p_active: body.active,
+          });
+        } else if (path[1] === "decide") {
           if (!isUuid(body.requestId) || typeof body.approve !== "boolean")
             throw new HttpError(400, "Invalid decision.");
           await rpc("portal_decide", {

@@ -5,14 +5,15 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for completed checks. For the existing deploy
 continue with custom SMTP, owner-account setup, and a real module installation.
 Steps 1–4 below also document rebuilding on a fresh project.
 
-**Migration history note:** the initial migration was applied through the SQL
+**Migration history note:** the initial and module-visibility migrations were applied through the SQL
 editor. Before the first CLI `db push` against this existing project, link it and
-mark that migration as applied. Do not run the creation SQL again:
+mark both migrations as applied. Do not run the creation SQL again:
 
 ```sh
 npx supabase login
 npx supabase link --project-ref hxqobdtslujsptkehmkj
 npx supabase migration repair 202609110001 --status applied
+npx supabase migration repair 202609110002 --status applied
 npx supabase migration list
 ```
 

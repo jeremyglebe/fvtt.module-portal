@@ -27,7 +27,7 @@ function fixture(options = {}) {
           {
             user_id: "11111111-1111-4111-8111-111111111111",
             email: "friend@example.com",
-            is_admin: false,
+            is_admin: options.admin || false,
           },
         ]);
       if (url.includes("/rpc/portal_ticket"))
@@ -36,9 +36,14 @@ function fixture(options = {}) {
           : Response.json(release);
       if (url.includes("/rpc/portal_issue"))
         return Response.json({ expires_at: "2030-01-01T00:00:00Z" });
+      if (url.includes("/rpc/portal_catalog")) return Response.json(options.modules || []);
+      if (url.includes("/portal_modules?"))
+        return Response.json(options.hidden ? [] : [{ id: "test" }]);
       if (url.includes("/storage/")) return new Response(new Uint8Array([1, 2, 3]));
       if (url.includes("select=public_manifest"))
         return Response.json([{ public_manifest: { id: "test", version: "1.0.0" } }]);
+      for (const name of ["releases", "grants", "requests"])
+        if (url.includes(`/portal_${name}?`)) return Response.json(options[name] || []);
       return Response.json([]);
     },
   });
@@ -61,6 +66,94 @@ test("ticket hashes are 256-bit and random values are not stored in plain text",
   assert.notEqual(value, newTicket());
   assert.notEqual(await hashTicket(value), value);
   assert.equal((await hashTicket(value)).length, 64);
+});
+
+test("secret notification endpoints and dashboard history do not leak hidden modules", async () => {
+  const anonymous = fixture({ hidden: true });
+  assert.equal((await anonymous.request("public/secret/module.json")).status, 404);
+  assert.equal((await anonymous.request("public/secret/module.json", "HEAD")).status, 404);
+  assert.ok(!anonymous.calls.some((c) => c.url.includes("portal_releases")));
+  const f = fixture({
+    user: {
+      id: "11111111-1111-4111-8111-111111111111",
+      email: "friend@example.com",
+      email_confirmed_at: "2026-01-01",
+    },
+    modules: [
+      {
+        id: "public",
+        title: "Public",
+        visibility: "public",
+        manifest_url: "https://github.com/example/module.json",
+        approved: false,
+      },
+    ],
+    releases: [{ id: "hidden-release", module_id: "secret", version: "1.0.0" }],
+    grants: [{ release_id: "hidden-release" }],
+    requests: [{ module_id: "secret", reason: "Secret module title" }],
+  });
+  const response = await f.request("dashboard", "GET", null, { Authorization: "Bearer valid" });
+  const data = await response.json();
+  assert.equal(data.modules.length, 1);
+  assert.deepEqual(data.releases, []);
+  assert.deepEqual(data.grants, []);
+  assert.deepEqual(data.requests, []);
+  assert.ok(!JSON.stringify(data).includes("secret"));
+  assert.equal(data.admin, undefined);
+});
+
+test("module settings and email grants require admin and validate URLs and recipients", async () => {
+  const user = {
+    id: "11111111-1111-4111-8111-111111111111",
+    email: "owner@example.com",
+    email_confirmed_at: "2026-01-01",
+  };
+  const headers = { Authorization: "Bearer valid", Origin: origin };
+  const f = fixture({ user, admin: true });
+  const module = {
+    moduleId: "test",
+    title: "Test",
+    description: "",
+    visibility: "public",
+    manifestUrl: "https://github.com/owner/repo/module.json",
+  };
+  assert.equal((await f.request("admin/module", "POST", module, headers)).status, 200);
+  for (const manifestUrl of [
+    "javascript:alert(1)",
+    "http://example.com",
+    "https://user:password@example.com/m.json",
+    "https://example.com/m.json#token",
+  ])
+    assert.equal(
+      (await f.request("admin/module", "POST", { ...module, manifestUrl }, headers)).status,
+      400,
+    );
+  assert.equal(
+    (
+      await f.request(
+        "admin/email-access",
+        "POST",
+        { moduleId: "test", email: " Friend@Example.com ", active: true },
+        headers,
+      )
+    ).status,
+    200,
+  );
+  const call = f.calls.find((c) => c.url.endsWith("/portal_set_email_access"));
+  assert.equal(JSON.parse(call.body).p_email, "friend@example.com");
+  const nonAdmin = fixture({ user });
+  assert.equal((await nonAdmin.request("admin/module", "POST", module, headers)).status, 403);
+  assert.equal(
+    (
+      await nonAdmin.request(
+        "admin/email-access",
+        "POST",
+        { moduleId: "test", email: "a@example.com", active: true },
+        headers,
+      )
+    ).status,
+    403,
+  );
 });
 test("manifest, HEAD and preflight do not consume a download", async () => {
   const f = fixture();

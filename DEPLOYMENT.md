@@ -30,9 +30,29 @@ autoconfirm is off. The Site URL and sole redirect allowlist entry are
 CLI migration history needs one-time repair before future CLI migrations because
 this deployment used the dashboard. See SETUP.md; do not reapply the initial SQL.
 
+## Module visibility update
+
+On 2026-09-11, `202609110002_module_visibility.sql` was applied transactionally through
+the SQL editor after confirming no existing module/account records. It adds public/private/secret
+visibility, descriptions, public manifest references, and the administrator-managed email allowlist.
+The updated function filters secret module metadata and related history on the server and disables
+anonymous secret notification manifests. No module entries, real email grants, or owner account
+permissions were created by this update.
+
+The updated `portal` function was deployed successfully from the tested handler source (exact text
+verified before deployment). Live checks confirmed allowlist RLS, no anonymous/authenticated table
+reads, no browser execution of the catalog or email-grant RPC, and unchanged zero module/email-grant
+counts. The updated API returns 401 for signed-out dashboards, 404 for unknown module manifests,
+and 410 for invalid installation tickets. Real signed-in Administration flows still require the
+owner bootstrap below.
+
+Both dashboard-applied migrations need their versions marked applied before future CLI migration
+pushes. The automated local suite covers catalog filtering, pre-signup verified-email access,
+revocation, unchanged release visibility, permissions, URL validation, and hidden-history responses.
+
 ## Verified live
 
-- Seven portal tables with RLS enabled.
+- Eight portal tables with RLS enabled, including the email allowlist.
 - No table privileges for `anon`/`authenticated`; no portal RPC execution privileges
   for `PUBLIC`/`anon`/`authenticated`.
 - Private Storage bucket; public Storage URL access denied.

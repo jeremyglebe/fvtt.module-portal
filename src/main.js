@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { readApiResponse } from "./api-response.js";
 import "./style.css";
 
 const $ = (id) => document.getElementById(id);
@@ -47,10 +48,7 @@ async function api(path, body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok)
-    throw new Error(result.error || "The portal is temporarily unavailable. Try again later.");
-  return result;
+  return readApiResponse(response, path);
 }
 function clearPrivateView() {
   current = null;

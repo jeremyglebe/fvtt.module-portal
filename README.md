@@ -50,13 +50,23 @@ In a module made from `fvtt.wfrp.template`, select `authenticated-site` and set:
 
 ```env
 RELEASE_CHANNEL=authenticated-site
+SUPABASE_URL=https://hxqobdtslujsptkehmkj.supabase.co
 AUTHENTICATED_SITE_URL=https://jeremyglebe.com/fvtt.module-portal/
 AUTHENTICATED_SITE_MANIFEST_URL=https://hxqobdtslujsptkehmkj.supabase.co/functions/v1/portal/public/YOUR_MODULE_ID/module.json
 ```
 
-Prepare the release with the template's normal release command, then run this
-repository's uploader locally with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-loaded securely in your shell environment:
+Set `SUPABASE_SERVICE_ROLE_KEY` once in the module checkout's ignored `.env.local`
+or your release environment. Never use a `VITE_` prefix or commit the key. Then run
+the template's normal command from the module checkout:
+
+```sh
+npm run release
+```
+
+It builds, packages, uploads privately, and registers the release automatically,
+including creating the module's first catalog entry. No separate upload or Pages
+deployment is needed. The template reads local environment files; this repository's
+standalone CLI is optional for recovery and reads only the process environment:
 
 ```sh
 npm run publish:release -- /absolute/path/to/.release-artifacts/authenticated-site/YOUR_MODULE_ID/v1.2.3
@@ -64,8 +74,11 @@ npm run publish:release -- /absolute/path/to/.release-artifacts/authenticated-si
 
 The uploader checks identity, SHA-256, size, and public-manifest fields, uploads the
 ZIP into private Storage without overwrite, then registers the release. It refuses
-duplicate versions. If registration fails, the private object remains for manual
-inspection; it is never silently overwritten or deleted. Publishing updates the
+changes to existing versions. Unchanged retries verify and reuse an uploaded object;
+an identical published catalog entry is treated as success. An unpublished entry is
+never reactivated by a retry. Nothing is overwritten or deleted. In the template,
+rerun the release command and choose `current` to resume the unchanged release.
+Publishing updates the
 public notification endpoint automatically; no separate Pages rebuild is necessary.
 
 Only minimal notification metadata is public. The full manifest remains in the

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHandler, hashTicket, newTicket } from "../supabase/functions/portal/core.ts";
 const base = "https://test.supabase.co";
-const origin = "https://jeremyglebe.github.io";
+const origin = "https://jeremyglebe.com";
 const ticket = "a".repeat(64);
 const release = {
   module_id: "test",

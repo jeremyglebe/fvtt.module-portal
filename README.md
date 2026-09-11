@@ -4,7 +4,7 @@ A shared, email-authenticated distribution portal for private Foundry VTT module
 The static site runs on **GitHub Pages**; Supabase provides Auth, Postgres,
 private Storage, and an Edge Function. No ChatGPT Sites hosting is involved.
 
-**Site:** https://jeremyglebe.github.io/fvtt.module-portal/
+**Site:** https://jeremyglebe.com/fvtt.module-portal/ (GitHub Pages, using the account's existing domain)
 
 **Setup status:** the frontend can deploy independently. A Supabase project,
 email delivery, and the owner account must be configured before downloads work.
@@ -50,7 +50,7 @@ In a module made from `fvtt.wfrp.template`, select `authenticated-site` and set:
 
 ```env
 RELEASE_CHANNEL=authenticated-site
-AUTHENTICATED_SITE_URL=https://jeremyglebe.github.io/fvtt.module-portal/
+AUTHENTICATED_SITE_URL=https://jeremyglebe.com/fvtt.module-portal/
 AUTHENTICATED_SITE_MANIFEST_URL=https://PROJECT_REF.supabase.co/functions/v1/portal/public/YOUR_MODULE_ID/module.json
 ```
 

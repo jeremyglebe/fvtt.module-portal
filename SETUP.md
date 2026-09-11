@@ -22,7 +22,7 @@ From this repository, install/use the official Supabase CLI and authenticate:
 npx supabase login
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
-npx supabase secrets set PORTAL_ORIGIN=https://jeremyglebe.github.io
+npx supabase secrets set PORTAL_ORIGIN=https://jeremyglebe.com
 npx supabase functions deploy portal --project-ref YOUR_PROJECT_REF
 ```
 
@@ -42,7 +42,7 @@ and service-only RPCs. Do not make that bucket public or add browser-access Stor
 In Supabase Authentication:
 
 - Enable email sign-in and new sign-ups. **Keep email confirmation enabled.**
-- Set Site URL to `https://jeremyglebe.github.io/fvtt.module-portal/`.
+- Set Site URL to `https://jeremyglebe.com/fvtt.module-portal/`.
 - Add that exact URL to the permitted redirect URLs. For local testing, add
   `http://127.0.0.1:5173/fvtt.module-portal/` only while needed.
 - Configure custom SMTP with your chosen mail provider and a verified sending

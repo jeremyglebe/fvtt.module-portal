@@ -63,6 +63,30 @@ the template's normal command from the module checkout:
 npm run release
 ```
 
+### Getting the publishing credential
+
+1. Sign in to Supabase and select the project matching `SUPABASE_URL`.
+2. Open **Settings > API Keys** ([shared portal project](https://supabase.com/dashboard/project/hxqobdtslujsptkehmkj/settings/api-keys)).
+3. In **Legacy anon, service_role API keys**, reveal and copy **service_role**.
+   Do not use `anon`, a public publishable key, or a database/account password.
+4. Add `SUPABASE_SERVICE_ROLE_KEY=<copied value>` to the module project's ignored `.env.local`,
+   beside `package.json`, preserving any existing settings. For the standalone uploader below,
+   supply it through your shell environment instead; that CLI does not load `.env.local`.
+5. Run `npm run release` from the module checkout.
+
+"Once" means **one-time configuration, not a single-use credential**. Keep using the saved key for
+every release and every module on this project until it is rotated, revoked, or expires. It is not
+one of the single-use installation links issued to players. The key grants administrative access:
+never share it with players, commit it, or include it in the public site.
+
+These instructions match the current legacy-key uploader. Supabase now recommends `sb_secret_…`
+keys and is deprecating legacy keys; migration requires a separate tooling update, not generating
+a new key for each release. If legacy keys are disabled or unavailable, do not substitute a public
+key or change project-wide key settings to bypass the error.
+See [Supabase's API key documentation](https://supabase.com/docs/guides/getting-started/api-keys).
+
+### Publication and retries
+
 It builds, packages, uploads privately, and registers the release automatically,
 including creating the module's first catalog entry. No separate upload or Pages
 deployment is needed. The template reads local environment files; this repository's

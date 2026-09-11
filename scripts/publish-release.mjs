@@ -7,10 +7,26 @@ import { isDeepStrictEqual } from "node:util";
 export function publishingSettings(env) {
   const base = env.SUPABASE_URL?.replace(/\/$/, "");
   const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!base || !key || key === "YOUR_SERVICE_ROLE_KEY")
+  if (!base || !key || key === "YOUR_SERVICE_ROLE_KEY") {
+    const project = /^https:\/\/([a-z0-9-]+)\.supabase\.co$/.exec(base || "")?.[1];
+    const dashboard = project
+      ? `https://supabase.com/dashboard/project/${project}/settings/api-keys`
+      : "https://supabase.com/dashboard (select your project, then Settings > API Keys)";
     throw new Error(
-      "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local or the release environment. Never commit the service-role key.",
+      [
+        "Missing Supabase publishing configuration.",
+        "Set SUPABASE_URL in .env.repo and SUPABASE_SERVICE_ROLE_KEY in ignored .env.local (or the release environment).",
+        "To obtain the credential for the current uploader:",
+        `1. Open ${dashboard}`,
+        "2. Open Legacy anon, service_role API keys; reveal and copy service_role, NOT anon or the public publishable key.",
+        "3. In your module project's .env.local, add SUPABASE_SERVICE_ROLE_KEY=<copied value>.",
+        "4. Rerun npm run release. The standalone portal uploader requires these variables in its shell environment instead.",
+        "This is one-time setup, NOT a single-use key. Reuse it for every release until it is rotated, revoked, or expires.",
+        "Never commit the key, share it with players, or put it in the public site or a VITE_ variable.",
+        "Full instructions: docs/releases/Authenticated Site.md (Getting the publishing credential), or distribution-site/README.md.",
+      ].join("\n"),
     );
+  }
   if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(base))
     throw new Error("Expected your hosted Supabase project URL.");
   return { base, key };

@@ -181,6 +181,37 @@ test("resumes catalog failure using an integrity-verified uploaded object", asyn
   );
 });
 
+test("missing and placeholder credentials explain retrieval, storage, and reuse", () => {
+  for (const key of [undefined, "", "   ", "YOUR_SERVICE_ROLE_KEY"]) {
+    assert.throws(
+      () =>
+        publishingSettings({
+          SUPABASE_URL: "https://test.supabase.co",
+          SUPABASE_SERVICE_ROLE_KEY: key,
+        }),
+      (error) => {
+        assert.match(
+          error.message,
+          /https:\/\/supabase.com\/dashboard\/project\/test\/settings\/api-keys/,
+        );
+        assert.match(error.message, /Legacy anon, service_role API keys/);
+        assert.match(error.message, /SUPABASE_SERVICE_ROLE_KEY=<copied value>/);
+        assert.match(error.message, /\.env.local/);
+        assert.match(error.message, /NOT a single-use key/);
+        assert.match(error.message, /Reuse it for every release/);
+        assert.match(error.message, /Never commit/);
+        assert.match(error.message, /docs\/releases\/Authenticated Site.md/);
+        return true;
+      },
+    );
+  }
+  assert.throws(() => publishingSettings({}), /select your project, then Settings > API Keys/);
+  assert.throws(
+    () => publishingSettings({ SUPABASE_URL: "https://do-not-print.example/?private=value" }),
+    (error) => !error.message.includes("do-not-print") && !error.message.includes("private=value"),
+  );
+});
+
 test("invalid credentials/configuration, artifact tampering, and network failures stop safely", async (t) => {
   const f = await fixture(t);
   assert.throws(() => publishingSettings({ SUPABASE_URL: f.env.SUPABASE_URL }), /SERVICE_ROLE_KEY/);
